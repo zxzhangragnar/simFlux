@@ -599,6 +599,10 @@ sim_metabolism_flux <-
   function(precision = 0.00000001,
            times = 500,
            metabolism_network_path) {
+    library(readr)
+    library(bvls)
+    library("rjson")
+    library("stringr")
     # set.seed(5)
     flux_df_sim = flux_sim_main(precision, times, metabolism_network_path)
     return(flux_df_sim)
