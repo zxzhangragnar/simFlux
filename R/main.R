@@ -537,19 +537,6 @@ gene_expression_sim_main <-
       read_csv(module_sim_flux_path, col_names = TRUE)
     mod_genes_name = get_mod_genes_name(module_gene_json)
     genes_grad = get_genes_grad(mod_genes_name)
-    if (ncol(genes_grad) > 0) {
-      write.csv(
-        genes_grad,
-        paste0(
-          "simresult_gene_grad/",
-          input_filename,
-          "_gene_grad_sim_row_",
-          csv_rowno_in_python,
-          ".csv"
-        ),
-        row.names = TRUE
-      )
-    }
     mgene_len = c()
     for (i in 1:length(module_gene_json)) {
       mgene_len = append(mgene_len, length(module_gene_json[[i]]))
