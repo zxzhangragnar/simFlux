@@ -38,7 +38,6 @@ build_net <- function(net, anchor_rid) {
   for (i in 1:length(all_reactions)) {
     rid = all_reactions[i]
 
-    # n进n出类型，要排列组合
     c_in_nodes = all_compounds[which(net[,i] == -1)]
     c_out_nodes = all_compounds[which(net[,i] == 1)]
     if(identical(c_in_nodes, character(0))) {
@@ -230,7 +229,7 @@ get_anchor_cycle_affiliated_edges <- function(hsa_net, g, anchor_rid, anchor_nod
                          succ=TRUE, dist=TRUE)
             in_suc = na.omit(in_suc$order)
             in_suc = in_suc$name
-            ##找到第一个无分叉的(先不考虑那么细)
+
             in_suc = c(cn,in_suc)
             g_in = subgraph(g, V(g)[name%in%in_suc])
             #plot(g_in)
@@ -247,7 +246,7 @@ get_anchor_cycle_affiliated_edges <- function(hsa_net, g, anchor_rid, anchor_nod
                           succ=TRUE, dist=TRUE)
             out_suc = na.omit(out_suc$order)
             out_suc = out_suc$name
-            ##找到第一个无分叉的(先不考虑那么细)
+
             out_suc = c(cn,out_suc)
             g_out = subgraph(g, V(g)[name%in%out_suc])
             #plot(g_out)
@@ -421,7 +420,7 @@ flux_sim_main <- function(accurate_1, solution_num, metabolism_network_path) {
   anchor_node = unique(as.vector(ends(g, E(g)[rid%in%anchor_rid], names = TRUE)))
   anchor_cycle_affiliated_edges = get_anchor_cycle_affiliated_edges(cmMat_inout, g, anchor_rid, anchor_node)
 
-  times = solution_num #1000组也是找到4个解
+  times = solution_num
   anchor_num = length(anchor_rid)
   aca_edge_num = length(anchor_cycle_affiliated_edges)
   free_edge_num = ncol(cmMat) - aca_edge_num
@@ -430,7 +429,6 @@ flux_sim_main <- function(accurate_1, solution_num, metabolism_network_path) {
   flux_df = data.frame(colnames(cmMat))
 
   for (i in 1:times) {
-    ## 取值范围
     upstream_value = runif(1, min=min(0.05*free_edge_num, 1.0), max=1.5)
     #boundary_value = runif(free_edge_num, min=0.3, max=0.8)
     boundary_value = runif(free_edge_num, min=0.00001, max=0.000012)
@@ -439,12 +437,11 @@ flux_sim_main <- function(accurate_1, solution_num, metabolism_network_path) {
 
     A = as.matrix(cmMat)
     B = matrix(c(rep(0,nrow(cmMat)-1),-upstream_value), nr=nrow(cmMat), nc=1)
-    solution_bias = abs((A %*% bvls_solution) - B) #注意:必须加绝对值,否则无意义
+    solution_bias = abs((A %*% bvls_solution) - B)
     if( (max(solution_bias) < accurate_1) ) {
       flux_df = cbind(flux_df, bvls_solution)
     }
   }
-  print("找到合格的:")
   print(ncol(flux_df))
 
   rownames(flux_df) = flux_df[,1]
@@ -453,8 +450,6 @@ flux_sim_main <- function(accurate_1, solution_num, metabolism_network_path) {
   flux_df = as.data.frame(t(flux_df))
   rownames(flux_df)<-paste("S_",1:nrow(flux_df),sep="")
 
-
-  ## pearson 相关系数
   wcorr_matrix_rowname = flux_corr_main(flux_df)
   wcorr_flux_df = flux_df[wcorr_matrix_rowname, ]
 
@@ -464,9 +459,6 @@ flux_sim_main <- function(accurate_1, solution_num, metabolism_network_path) {
 }
 
 ##############################################################################
-
-
-## 加入每个基因的表达参数grad
 get_mod_genes_table <- function(module_gene_json, mod_genes_name, genes_grad) {
 
   mods_name = names(module_gene_json)
@@ -484,7 +476,6 @@ get_mod_genes_table <- function(module_gene_json, mod_genes_name, genes_grad) {
     for (j in 1:length(colnames(mod_genes_table))) {
       tmp_row_gene = mod_genes_name[j]
       if (tmp_row_gene %in% tmp_mod_gene_json) {
-        ## 加入基因表达参数 grad
         #mod_genes_table[i,j] = 1
         mod_genes_table[i,j] = genes_grad[tmp_row_gene, "grad"]
       }
@@ -494,25 +485,22 @@ get_mod_genes_table <- function(module_gene_json, mod_genes_name, genes_grad) {
   return(mod_genes_table)
 }
 
-
-###生成多组sim解 配套的gene, 相当于多个sample 用于训练
 get_gene_df <- function(times, accurate, max_mgene_len, system_rightside, mod_genes_name, mod_genes_table) {
   #system_rightside = as.matrix(unlist(module_sim_value[1,]))
   gene_df = data.frame(rep(0, ncol(mod_genes_table)))
   gene_df = data.frame(colnames(mod_genes_table))
 
-  ## 矩阵的秩,最大线性无关解的数量
   #rank_sol = ncol(mod_genes_table)-nrow(mod_genes_table)
   for (i in 1:times) {
     if(i%%1000 == 0) {
       print(i)
     }
     # add_random = runif(1,min=0.001,max=1.2)
-    # bls = runif(length(mod_genes_name), min=0.00001, max=0.02) ## bls max越大,越不均匀
+    # bls = runif(length(mod_genes_name), min=0.00001, max=0.02)
     # bus = bls*1.2+add_random
     #add_random = runif(1,min=1.4999,max=1.5)
-    add_random = runif(1,min=1.4999*max_mgene_len,max=1.5*max_mgene_len) #考虑到取均值
-    bls = runif(length(mod_genes_name), min=0.000001, max=0.000002) ## bls max越大,越不均匀
+    add_random = runif(1,min=1.4999*max_mgene_len,max=1.5*max_mgene_len)
+    bls = runif(length(mod_genes_name), min=0.000001, max=0.000002)
     bus = bls*1.2+add_random
 
     bvls_solution = bvls(mod_genes_table, system_rightside,
@@ -521,7 +509,7 @@ get_gene_df <- function(times, accurate, max_mgene_len, system_rightside, mod_ge
     #sol = round(bvls_solution$x,6)
     sol = bvls_solution$x
 
-    solution_bias = abs((mod_genes_table %*% sol) - system_rightside) #注意:必须加绝对值,否则无意义
+    solution_bias = abs((mod_genes_table %*% sol) - system_rightside)
     if( (max(solution_bias) < accurate) ) {
       gene_df = cbind(gene_df, sol)
     }
@@ -529,7 +517,6 @@ get_gene_df <- function(times, accurate, max_mgene_len, system_rightside, mod_ge
 
   rownames(gene_df) = gene_df[,1]
   gene_df = gene_df[,-1]
-  print("找到了:")
   print(length(gene_df))
 
   sol_correlation <- cor(gene_df)
@@ -545,7 +532,6 @@ get_gene_df <- function(times, accurate, max_mgene_len, system_rightside, mod_ge
 get_mod_genes_name <- function(module_gene_json) {
   # module_gene_json <- fromJSON(file = paste0("E:/scPlus_universal/simulate/flux_generater/org_input/",
   #                                            input_filename, "_modules_genes.json"))
-  ## gene名的信息
   mod_genes_name = c()
   for (mod_gene in module_gene_json) {
     mod_genes_name = append(mod_genes_name,mod_gene)
@@ -574,7 +560,7 @@ gene_expression_sim_main <- function(module_gene_json_path, module_sim_flux_path
   # setwd("E:/scPlus_universal/simulate/flux_generater/")
 
   # input_filename = "GSLsim1"
-  # csv_rowno_in_python = 0 #注意这个是python中的行号从0开始,代表第1行
+  # csv_rowno_in_python = 0
   # times = 80000
 
   # module_gene_json <- fromJSON(file = paste0("E:/scPlus_universal/simulate/flux_generater/org_input/",
@@ -585,9 +571,7 @@ gene_expression_sim_main <- function(module_gene_json_path, module_sim_flux_path
   module_gene_json <- fromJSON(file = module_gene_json_path)
   module_sim_value <- read_csv(module_sim_flux_path, col_names = TRUE)
 
-  ## gene名的信息
   mod_genes_name = get_mod_genes_name(module_gene_json)
-  ## 加入基因表达参数 grad
   genes_grad = get_genes_grad(mod_genes_name)
   if (ncol(genes_grad) > 0) {
     write.csv(genes_grad, paste0("simresult_gene_grad/", input_filename, "_gene_grad_sim_row_", csv_rowno_in_python, ".csv"),row.names=TRUE)
@@ -601,8 +585,7 @@ gene_expression_sim_main <- function(module_gene_json_path, module_sim_flux_path
 
   ##
   mod_genes_table = get_mod_genes_table(module_gene_json, mod_genes_name, genes_grad)
-
-  ## gene的和改为基因和的均值来求解
+  
   #m_gene_num = rowSums(as.matrix(mod_genes_table)==1)
   m_gene_num = rowSums(as.matrix(mod_genes_table)>0)
 
@@ -610,7 +593,7 @@ gene_expression_sim_main <- function(module_gene_json_path, module_sim_flux_path
   row_no = as.character(csv_rowno_in_python+1)
   system_rightside = as.matrix(unlist(module_sim_value[row_no,]))
   system_rightside_multi_mean = system_rightside
-  ##乘上基因的数目,即基因表达量的和/基因数目 即均值
+
   for (i in 1:nrow(system_rightside_multi_mean)) {
     sys_module = names(system_rightside_multi_mean[i,1])
     system_rightside_multi_mean[i,1] = m_gene_num[sys_module]*system_rightside_multi_mean[i,1]
