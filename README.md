@@ -1,2 +1,2 @@
 # simFlux
-Generate simulated metabolic network flux data and accompanying gene expression data.
+Generate simulated metabolic network flux data and gene expression data.
